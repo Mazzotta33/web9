@@ -1,6 +1,44 @@
 require "test_helper"
 
 class UserTest < ActiveSupport::TestCase
+  test "remember hashes a random token and forget revokes it" do
+    user = users(:michael)
+    digest = user.remember
+    assert_equal digest, user.reload.remember_digest
+    assert_not_equal user.remember_token, digest
+    assert user.authenticated?(user.remember_token)
+    assert_not user.authenticated?(User.new_token)
+    user.forget
+    assert_nil user.reload.remember_digest
+    assert_not user.authenticated?(user.remember_token)
+  end
+
+  test "authentication rejects missing digest and missing token" do
+    user = users(:michael)
+    assert_not user.authenticated?("")
+    user.remember
+    assert_not user.authenticated?(nil)
+    assert_not user.authenticated?("")
+  end
+
+  test "new remember token replaces the previous one" do
+    user = users(:michael)
+    user.remember
+    previous_token = user.remember_token
+    user.remember
+    assert_not_equal previous_token, user.remember_token
+    assert_not user.authenticated?(previous_token)
+    assert user.authenticated?(user.remember_token)
+  end
+
+  test "session token stays stable until forgotten" do
+    user = users(:michael)
+    token = user.session_token
+    assert_equal token, user.session_token
+    user.forget
+    assert_not_equal token, user.session_token
+  end
+
   def setup
     @user = User.new(name: "Example User", email: "user@example.com",
       password: "foobar", password_confirmation: "foobar")

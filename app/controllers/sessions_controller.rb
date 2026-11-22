@@ -3,10 +3,11 @@ class SessionsController < ApplicationController
   end
 
   def create
-    credentials = params.require(:session).permit(:email, :password)
+    credentials = params.require(:session).permit(:email, :password, :remember_me)
     user = User.find_by(email: credentials[:email].to_s.downcase)
     if user&.authenticate(credentials[:password].to_s)
       reset_session
+      credentials[:remember_me] == "1" ? remember(user) : forget(user)
       log_in user
       redirect_to user
     else
